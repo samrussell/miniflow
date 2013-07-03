@@ -9,12 +9,13 @@ import thread
 import struct
 
 def ProcessOpenFlowMessage(header, length, payload):
+    # make this return a dict, with a field for what to send out to what switch
     pass
 
 
 def OpenFlowHeader(data):
     if(len(data) >=8):
-        return struct.unpack("!bbhl", data)
+        return struct.unpack("!BBHL", data)
     return None
 
 
