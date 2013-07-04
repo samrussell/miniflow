@@ -92,7 +92,23 @@ class miniflow_test(unittest.TestCase):
                 (struct.pack('!BBHL', 1, ofp_type['OFPT_ECHO_REPLY'], 16, 0x12345678), b"\x12\x34\x56\x78\x9a\xbc\xde\xf0"),
                 {"output" : None}
             ), # ECHO_REPLY just needs to be accepted
+            (
+                (struct.pack('!BBHL', 1, ofp_type['OFPT_FEATURES_REPLY'], 32, 0x12345678), b"\x00\x00\x00\x12\x34\x56\x78\x90\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+                {"output" : None}
+            ), # FEATURES_REPLY with nothing enabled - need a few of these (maybe time to split into individual tests?)
+            (
+                (struct.pack('!BBHL', 1, ofp_type['OFPT_FEATURES_REPLY'], 80, 0x12345678), b"\x00\x00\x00\x12\x34\x56\x78\x90\x00\x00\x00\x10\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" # features header
+                                                                                         + b"\x00\x01\x00\x00\x22\x23\x24\x25\x26123456789abcdef\x00\x00\x00\x00\x00\x00\x03\x00\x00" # ofp_phy_port
+                                                                                         + b"\xbf\x00\x00\x00\xbf\x00\x00\x00\xbf\x00\x00\x00\xbf\x00\x00\x00" # features omg
+                                                                                         ),
+                {"output" : None}
+            ), # FEATURES_REPLY with nothing enabled - need a few of these (maybe time to split into individual tests?)
         ]
+            # make a set of tests that should throw exceptions?
+            #(
+            #    (struct.pack('!BBHL', 1, ofp_type['OFPT_FEATURES_REQUEST'], 16, 0x12345678), b"\x12\x34\x56\x78\x9a\xbc\xde\xf0"),
+            #    {"output" : None}
+            #), # 
         for one, two in sampleoutputs:
             actual = ProcessOpenFlowMessage(*one)
             expected = two # some function likely

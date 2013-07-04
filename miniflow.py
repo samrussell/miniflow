@@ -64,11 +64,15 @@ def ProcessOpenFlowEchoRequest(header, payload):
 def ProcessOpenFlowEchoReply(header, payload):
     return {"output" : None}
 
+def ProcessOpenFlowFeaturesReply(header, payload):
+    return {"output" : None}
+
 ProcessOpenFlowMessageType = {
     ofp_type['OFPT_HELLO'] : ProcessOpenFlowHello,
     ofp_type['OFPT_ERROR'] : ProcessOpenFlowError,
     ofp_type['OFPT_ECHO_REQUEST'] : ProcessOpenFlowEchoRequest,
     ofp_type['OFPT_ECHO_REPLY'] : ProcessOpenFlowEchoReply,
+    ofp_type['OFPT_FEATURES_REPLY'] : ProcessOpenFlowFeaturesReply,
 }
 
 def ProcessOpenFlowMessage(header, payload):
@@ -106,9 +110,7 @@ def Listen():
     serversocket.listen(5)
     return serversocket
 
-
-def main():
-    
+def BackgroundServer():
     serversocket = Listen()
     while 1:
         (clientsocket, address) = serversocket.accept()
@@ -116,6 +118,11 @@ def main():
             thread.start_new_thread(OpenFlowServer, (clientsocket, address))
         except:
             print "ERROR: Could not start new thread to serve (%s)" % address
+
+
+def main():
+    BackgroundServer()
+    
 
 
 if __name__ == '__main__':
