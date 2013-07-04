@@ -12,6 +12,7 @@ from miniflow import *
 import struct
 
 class miniflow_test(unittest.TestCase):
+            
     def test_processopenflowmessage(self):
         #enum ofp_type {
         #    /* Immutable messages. */
@@ -74,7 +75,7 @@ class miniflow_test(unittest.TestCase):
             'OFPT_QUEUE_GET_CONFIG_REQUEST' : 20,
             'OFPT_QUEUE_GET_CONFIG_REPLY' : 21,
         }
-        sampleoutputs = {
+        sampleoutputs = [
             (
                 (struct.pack('!BBHL', 1, ofp_type['OFPT_HELLO'], 8, 0x12345678), b""),
                 {"output" : None}
@@ -85,12 +86,19 @@ class miniflow_test(unittest.TestCase):
             ), # we don't reply to ERROR but should accept it fine
             (
                 (struct.pack('!BBHL', 1, ofp_type['OFPT_ECHO_REQUEST'], 16, 0x12345678), b"\x12\x34\x56\x78\x9a\xbc\xde\xf0"),
-                {"output" : (struct.pack('!BBHL', 1, ofp_type['OFPT_ECHO_REPLY'], 16, 0x12345678), b"\x12\x34\x56\x78\x9a\xbc\xde\xf0")}
-            ), # we don't reply to ERROR but should accept it fine
-            
-        }
+                {"output" : (struct.pack('!BBHL', 1, ofp_type['OFPT_ECHO_REPLY'], 16, 0x12345678),  b"\x12\x34\x56\x78\x9a\xbc\xde\xf0")}
+            ), # ECHO_REQUEST packets need a reply
+            (
+                (struct.pack('!BBHL', 1, ofp_type['OFPT_ECHO_REPLY'], 16, 0x12345678), b"\x12\x34\x56\x78\x9a\xbc\xde\xf0"),
+                {"output" : None}
+            ), # ECHO_REPLY just needs to be accepted
+        ]
         for one, two in sampleoutputs:
-            expected = one
-            actual = two # some function likely
-            self.assertEquals(expected, actual, "Function(%(rrdfilename)s): expected %(expected)s (but is %(actual)s)" % locals())
+            actual = ProcessOpenFlowMessage(*one)
+            expected = two # some function likely
+            self.assertEquals(expected, actual, "Testing messages: expected %(expected)s (but is %(actual)s)" % locals())
 
+
+
+if __name__ == '__main__':
+  unittest.main()
