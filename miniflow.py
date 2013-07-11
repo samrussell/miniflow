@@ -85,14 +85,26 @@ def ProcessOpenFlowMessage(header, payload):
         return ProcessOpenFlowMessageType[ofpt_type](header, payload)
     return None
 
+def OpenFlowHeader(data):
+    if(len(data) >=8):
+        return struct.unpack("!bbhl", data)
+    return None
+
+
 def GetOpenFlowMessage(clientsocket):
     header = clientsocket.recv(8) # openflow standard says every message starts with 8-byte header
-    parsedheader = OpenFlowHeader(data)
+    parsedheader = OpenFlowHeader(header)
     # do a test for header == None and fail?
+    if parsedheader == None:
+        return
     (version, ofpt_type, length, xid) = parsedheader
     print "Version %d, type %d, length %d, xid %d" % (version, ofpt_type, length, xid)
     # read rest of header
-    payload = clientsocket.recv(length-8)
+    print "Header size: %d, length: %d, rest: %d" % (8, length, length-8)
+    if length > 8:
+        payload = clientsocket.recv(length-8)
+    else:
+        payload = b""
     ProcessOpenFlowMessage(header, payload)
 
 
@@ -101,11 +113,11 @@ class OpenFlowThread(asyncore.dispatcher_with_send):
     def __init__(self, sock, address):
         asyncore.dispatcher_with_send.__init__(self, sock)
         self.address = address
+        # start off by sending a hello message
+        self.send(struct.pack('!BBHL', 1, ofp_type['OFPT_HELLO'], 8, 0x12345678))
     
     def handle_read(self):
-        data = self.recv(8192)
-        if data:
-            self.send(data)
+        GetOpenFlowMessage(self)
 
 
 class OpenFlowServer(asyncore.dispatcher):

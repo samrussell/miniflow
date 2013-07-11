@@ -14,43 +14,32 @@ import Queue
 import socket
 import asyncore
 
-class OpenFlowClient(asyncore.dispatcher):
 
-    def __init__(self, host, path):
-        asyncore.dispatcher.__init__(self)
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connect( (host, 80) )
-        self.buffer = 'GET %s HTTP/1.0\r\n\r\n' % path
-
-    def handle_connect(self):
-        pass
-
-    def handle_close(self):
-        self.close()
-
-    def handle_read(self):
-        print self.recv(8192)
-
-    def writable(self):
-        return (len(self.buffer) > 0)
-
-    def handle_write(self):
-        sent = self.send(self.buffer)
-        self.buffer = self.buffer[sent:]
-
-
-client = HTTPClient('www.python.org', '/')
-asyncore.loop()
 
 class miniflow_test(unittest.TestCase):
+    
+    def createsocket(self, ip, port):
+        return socket.create_connection((ip, port), 1)
+    
     
     def test_dummyswitch(self):
         # start the server
         threadq = Queue.Queue()
-        thread.start_new_thread(miniflow.BackgroundServer, (threadq,))
+        thread.start_new_thread(BackgroundServer, (threadq,))
         
         # make a client connection
+        clientsocket = self.createsocket("localhost", 6633)
         
+        # send hello
+        hellomsg = struct.pack('!BBHL', 1, ofp_type['OFPT_HELLO'], 8, 0x12345677)
+        clientsocket.sendall(hellomsg)
+        
+        # get reply hello
+        clientsocket.settimeout(5.0)
+        reply = clientsocket.recv(8000)
+        expected = struct.pack('!BBHL', 1, ofp_type['OFPT_HELLO'], 8, 0x12345678)
+        actual = reply
+        self.assertEquals(expected, actual, "Testing messages: expected %(expected)s (but is %(actual)s)" % locals())
         
         # kill the server
         threadq.put("quit")
