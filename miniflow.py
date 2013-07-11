@@ -5,8 +5,10 @@
 # Because networking is hard
 
 import socket
+import asyncore
 import thread
 import struct
+import Queue
 
 ofp_type = {
             'OFPT_HELLO' : 0,
@@ -93,25 +95,47 @@ def GetOpenFlowMessage(clientsocket):
     ProcessOpenFlowMessage(header, payload)
 
 
-def OpenFlowServer(clientsocket, address):
+def OpenFlowServer(clientsocket, address, q):
     ipaddress = address[0]
     port = address[1]
     print "Got connection from %s:%d" % (ipaddress, port)
     while 1:
         data = GetOpenFlowMessage(clientsocket)
-        
+
     
     clientsocket.close()
 
 
-def Listen():
+class OpenFlowListener(asyncore.dispatcher):
+    #code
+    
+    def __init__(self, host, port, q):
+        self.q = q
+        asyncore.dispatcher.__init__(self)
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.set_reuse_addr()
+        self.bind((host, port))
+        self.listen(5)
+    
+    def handle_accept(self):
+        pair = self.accept()
+        if pair is not None:
+            sock, addr = pair
+            print "New connection from %s" % repr(addr)
+            OpenFlowServer(sock, addr, q)
+    
+    
+
+def Listen(q):
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.bind(("0.0.0.0", 6634))
+    if q:
+        serversocket.setblocking(0)
     serversocket.listen(5)
     return serversocket
 
-def BackgroundServer():
-    serversocket = Listen()
+def BackgroundServer(q = None):
+    serversocket = Listen(q)
     while 1:
         (clientsocket, address) = serversocket.accept()
         try:
@@ -121,7 +145,8 @@ def BackgroundServer():
 
 
 def main():
-    BackgroundServer()
+    q = Queue.Queue()
+    BackgroundServer(q)
     
 
 

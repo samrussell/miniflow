@@ -12,7 +12,14 @@ from miniflow import *
 import struct
 
 class miniflow_test(unittest.TestCase):
-            
+    
+    def test_dummyswitch(self):
+        # start server
+        #s = 
+        pass
+    
+    
+    
     def test_processopenflowmessage(self):
         #enum ofp_type {
         #    /* Immutable messages. */
