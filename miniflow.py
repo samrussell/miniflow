@@ -9,6 +9,7 @@ import asyncore
 import thread
 import struct
 import Queue
+import sys
 
 ofp_type = {
             'OFPT_HELLO' : 0,
@@ -95,22 +96,21 @@ def GetOpenFlowMessage(clientsocket):
     ProcessOpenFlowMessage(header, payload)
 
 
-def OpenFlowServer(clientsocket, address, q):
-    ipaddress = address[0]
-    port = address[1]
-    print "Got connection from %s:%d" % (ipaddress, port)
-    while 1:
-        data = GetOpenFlowMessage(clientsocket)
-
+class OpenFlowThread(asyncore.dispatcher_with_send):
     
-    clientsocket.close()
+    def __init__(self, sock, address):
+        asyncore.dispatcher_with_send.__init__(self, sock)
+        self.address = address
+    
+    def handle_read(self):
+        data = self.recv(8192)
+        if data:
+            self.send(data)
 
 
-class OpenFlowListener(asyncore.dispatcher):
+class OpenFlowServer(asyncore.dispatcher):
     #code
-    
-    def __init__(self, host, port, q):
-        self.q = q
+    def __init__(self, host, port):
         asyncore.dispatcher.__init__(self)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
@@ -120,33 +120,32 @@ class OpenFlowListener(asyncore.dispatcher):
     def handle_accept(self):
         pair = self.accept()
         if pair is not None:
-            sock, addr = pair
-            print "New connection from %s" % repr(addr)
-            OpenFlowServer(sock, addr, q)
-    
+            sock, address = pair
+            print "New connection from %s" % repr(address)
+            handler = OpenFlowThread(sock, address)
     
 
-def Listen(q):
-    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serversocket.bind(("0.0.0.0", 6634))
-    if q:
-        serversocket.setblocking(0)
-    serversocket.listen(5)
-    return serversocket
-
-def BackgroundServer(q = None):
-    serversocket = Listen(q)
+def BackgroundServer(threadq = None):
+    server = OpenFlowServer("0.0.0.0", 6633)
     while 1:
-        (clientsocket, address) = serversocket.accept()
-        try:
-            thread.start_new_thread(OpenFlowServer, (clientsocket, address))
-        except:
-            print "ERROR: Could not start new thread to serve (%s)" % address
+        if threadq:
+            try:
+                message = threadq.get_nowait()
+                # if we get here then something is kicking us out
+                return
+            except:
+                pass
+        asyncore.loop(timeout = 1)
 
 
 def main():
-    q = Queue.Queue()
-    BackgroundServer(q)
+    threadq = Queue.Queue()
+    thread.start_new_thread(BackgroundServer, (threadq,))
+    while 1:
+        line = sys.stdin.readline()
+        if(line.startswith("quit")):
+            threadq.put(line)
+            return
     
 
 
